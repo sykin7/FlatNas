@@ -29,6 +29,7 @@ import AppSidebar from "./AppSidebar.vue";
 import CountdownWidget from "./CountdownWidget.vue";
 import DockerWidget from "./DockerWidget.vue";
 import SystemStatusWidget from "./SystemStatusWidget.vue";
+import CustomCssWidget from "./CustomCssWidget.vue";
 
 import SizeSelector from "./SizeSelector.vue";
 
@@ -507,11 +508,12 @@ const handleCardClick = (item: NavItem) => {
 
   // Lucky STUN Port Replacement
   // 当配置了 Lucky STUN 且当前访问域名与卡片链接域名一致时，自动替换端口
-  if (store.luckyStunData?.data?.stun === "success" && store.luckyStunData?.data?.port) {
+  const stunData = store.luckyStunData?.data;
+  if (stunData?.stun === "success" && stunData?.port) {
     try {
       const urlObj = new URL(targetUrl);
       if (urlObj.hostname === window.location.hostname) {
-        urlObj.port = String(store.luckyStunData.data.port);
+        urlObj.port = String(stunData.port);
         targetUrl = urlObj.toString();
       }
     } catch {
@@ -638,6 +640,19 @@ const fetchContainerStatuses = async () => {
   });
 
   // 2. Try to fetch real data
+  // Only fetch if there are container items to update
+  const hasDockerItems = store.groups.some((g) =>
+    g.items.some((item) => item.containerId && !item.containerId.startsWith("mock-")),
+  );
+
+  if (!hasDockerItems) {
+    // If no docker items, just schedule next poll and return
+    if (isMounted.value) {
+      containerPollTimer = setTimeout(fetchContainerStatuses, 5000);
+    }
+    return;
+  }
+
   try {
     const headers = store.getHeaders();
     // Only fetch if we are likely to have a backend (or let it fail silently)
@@ -1504,6 +1519,7 @@ onMounted(() => {
             <RssWidget v-else-if="widget.type === 'rss'" :widget="widget" />
             <DockerWidget v-else-if="widget.type === 'docker'" :widget="widget" />
             <SystemStatusWidget v-else-if="widget.type === 'system-status'" :widget="widget" />
+            <CustomCssWidget v-else-if="widget.type === 'custom-css'" :widget="widget" />
           </GridItem>
         </GridLayout>
 

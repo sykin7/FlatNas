@@ -1,7 +1,15 @@
 import { ref, computed, watch } from "vue";
 import { defineStore } from "pinia";
 import { io } from "socket.io-client";
-import type { NavItem, NavGroup, AppConfig, WidgetConfig, RssFeed, RssCategory } from "@/types";
+import type {
+  NavItem,
+  NavGroup,
+  AppConfig,
+  WidgetConfig,
+  RssFeed,
+  RssCategory,
+  LuckyStunData,
+} from "@/types";
 
 export const useMainStore = defineStore("main", () => {
   const socket = io();
@@ -17,9 +25,9 @@ export const useMainStore = defineStore("main", () => {
   });
 
   // Lucky STUN Data
-  const luckyStunData = ref<unknown>(null);
+  const luckyStunData = ref<LuckyStunData | null>(null);
   socket.on("lucky:stun", (data: unknown) => {
-    luckyStunData.value = data;
+    luckyStunData.value = data as LuckyStunData;
   });
 
   const fetchLuckyStunData = async () => {
@@ -64,7 +72,7 @@ export const useMainStore = defineStore("main", () => {
     }));
 
   // Version Check
-  const currentVersion = "1.0.31";
+  const currentVersion = "1.0.32";
   const latestVersion = ref("");
   const dockerUpdateAvailable = ref(false);
 
@@ -300,18 +308,21 @@ export const useMainStore = defineStore("main", () => {
         widgets.value = widgets.value.filter((w) => w.id !== "docker" && w.type !== "docker");
 
         // 3. 准备最终的 Docker 组件
+        let finalDockerWidget: WidgetConfig;
+
         if (dockerCandidate) {
           // 使用现有组件作为基础，但强制 ID 和类型
-          dockerCandidate.id = "docker";
-          dockerCandidate.type = "docker";
+          finalDockerWidget = dockerCandidate;
+          finalDockerWidget.id = "docker";
+          finalDockerWidget.type = "docker";
           // 确保关键属性存在，防止渲染错误
-          if (typeof dockerCandidate.colSpan !== "number") dockerCandidate.colSpan = 1;
-          if (typeof dockerCandidate.rowSpan !== "number") dockerCandidate.rowSpan = 1;
-          if (typeof dockerCandidate.enable !== "boolean") dockerCandidate.enable = false;
-          if (typeof dockerCandidate.isPublic !== "boolean") dockerCandidate.isPublic = true;
+          if (typeof finalDockerWidget.colSpan !== "number") finalDockerWidget.colSpan = 1;
+          if (typeof finalDockerWidget.rowSpan !== "number") finalDockerWidget.rowSpan = 1;
+          if (typeof finalDockerWidget.enable !== "boolean") finalDockerWidget.enable = false;
+          if (typeof finalDockerWidget.isPublic !== "boolean") finalDockerWidget.isPublic = true;
         } else {
           // 不存在则创建默认的
-          dockerCandidate = {
+          finalDockerWidget = {
             id: "docker",
             type: "docker",
             enable: false,
@@ -322,7 +333,7 @@ export const useMainStore = defineStore("main", () => {
         }
 
         // 4. 将规范化后的 Docker 组件添加到列表末尾
-        widgets.value.push(dockerCandidate);
+        widgets.value.push(finalDockerWidget);
 
         if (!widgets.value.find((w) => w.type === "rss")) {
           widgets.value.push({

@@ -70,10 +70,10 @@ const hourDeg = computed(() => hours.value * 30);
     class="w-full h-full relative group transition-all overflow-hidden rounded-2xl border border-white/10"
     :class="[
       widget.data?.style === 'digital'
-        ? 'backdrop-blur hover:bg-black/30'
+        ? `backdrop-blur hover:bg-black/30 ${!widget.textColor ? 'text-white' : ''}`
         : widget.data?.style === 'retro'
-          ? 'text-gray-900 border-[#8b5a2b]'
-          : 'text-gray-800',
+          ? `${!widget.textColor ? 'text-gray-900' : ''} border-[#8b5a2b]`
+          : `${!widget.textColor ? 'text-gray-800' : ''}`,
     ]"
     :style="{
       backgroundColor:
@@ -82,6 +82,7 @@ const hourDeg = computed(() => hours.value * 30);
           : widget.data?.style === 'retro'
             ? `rgba(232, 220, 196, ${widget.opacity ?? 1})`
             : `rgba(255, 255, 255, ${widget.opacity ?? 0.9})`,
+      color: widget.textColor
     }"
   >
     <!-- Toggle Button -->

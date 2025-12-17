@@ -340,39 +340,37 @@ const togglePlayMode = () => {
   currentRotationMode.value = currentRotationMode.value === "random" ? "sequential" : "random";
 };
 
-const enableBingWallpaper = async () => {
-  loading.value = true;
-  try {
-    const token = localStorage.getItem("flat-nas-token");
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+const customApiUrl = ref("");
 
-    const res = await fetch("/api/backgrounds/bing", {
-      method: "POST",
-      headers,
-    });
+const presetApis = [
+  {
+    name: "Bing 每日壁纸",
+    url: "https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN",
+  },
+  { name: "随机风景 (Picsum)", url: "https://picsum.photos/1920/1080" },
+  { name: "随机二次元", url: "https://www.loliapi.com/acg/" },
+];
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.filename) {
-        await fetchWallpapers(); // Refresh list
-        // Set as default
-        selectWallpaper(data.filename, "pc");
-        alert("Bing 每日壁纸设置成功！");
-      }
-    } else {
-      alert("获取 Bing 壁纸失败");
-    }
-  } catch (e) {
-    console.error(e);
-    alert("网络错误");
-  } finally {
-    loading.value = false;
+const usePreset = (url: string) => {
+  customApiUrl.value = url;
+};
+
+const applyCustomApi = (type: "pc" | "mobile") => {
+  if (!customApiUrl.value) return;
+  if (type === "pc") {
+    store.appConfig.background = customApiUrl.value;
+  } else {
+    store.appConfig.mobileBackground = customApiUrl.value;
   }
+  store.saveData();
+  alert("设置成功");
 };
 
 onMounted(() => {
   fetchWallpapers();
+  if (store.appConfig.background?.startsWith("http")) {
+    customApiUrl.value = store.appConfig.background;
+  }
 });
 </script>
 
@@ -718,109 +716,178 @@ onMounted(() => {
           </VueDraggable>
 
           <!-- API Management -->
-          <div v-if="activeTab === 'api'" class="space-y-6">
-            <div class="border border-gray-200 rounded-xl bg-white p-4">
-              <h4 class="text-sm font-bold text-gray-800 mb-3">PC 端接口</h4>
-              <div class="space-y-2">
-                <label class="block text-[12px] text-gray-600">列表接口</label>
-                <input
-                  v-model="store.appConfig.wallpaperApiPcList"
-                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none"
-                  placeholder="默认 /api/backgrounds，返回文件名数组"
-                />
-                <label class="block text-[12px] text-gray-600 mt-2">上传接口</label>
-                <input
-                  v-model="store.appConfig.wallpaperApiPcUpload"
-                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none"
-                  placeholder="默认 /api/backgrounds/upload (支持FormData: files)"
-                />
-                <label class="block text-[12px] text-gray-600 mt-2">删除接口基础路径</label>
-                <input
-                  v-model="store.appConfig.wallpaperApiPcDeleteBase"
-                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none"
-                  placeholder="默认 /api/backgrounds，最终为 /base/{name}"
-                />
-                <label class="block text-[12px] text-gray-600 mt-2">图片访问前缀</label>
-                <input
-                  v-model="store.appConfig.wallpaperPcImageBase"
-                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none"
-                  placeholder="默认 /backgrounds，最终为 /prefix/{name}"
-                />
+          <div v-if="activeTab === 'api'" class="space-y-6 p-1">
+            <div class="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm leading-relaxed">
+              在此处可以直接输入图片的 URL 地址，或使用第三方随机壁纸 API。
+              设置后，每次刷新页面可能会根据 API 返回不同的图片（取决于 API 行为）。
+            </div>
 
-                <div class="mt-3 pt-3 border-t border-gray-100">
-                  <button
-                    @click="enableBingWallpaper"
-                    class="w-full px-3 py-2 rounded-lg text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 shadow-sm flex items-center justify-center gap-2"
+            <div class="border border-gray-200 rounded-xl bg-white p-6 shadow-sm">
+              <h4 class="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span>🔗</span> 自定义壁纸接口
+              </h4>
+
+              <div class="space-y-4">
+                <!-- Preview Area -->
+                <div v-if="customApiUrl" class="grid grid-cols-2 gap-4">
+                  <!-- PC Preview -->
+                  <div class="space-y-2">
+                    <div class="text-[10px] text-gray-500 text-center font-bold">PC 端预览</div>
+                    <div
+                      class="relative h-48 w-full rounded-lg overflow-hidden border border-gray-200 bg-gray-100 group"
+                    >
+                      <img
+                        :src="customApiUrl"
+                        class="w-full h-full object-cover transition-all duration-700"
+                        :style="{
+                          filter: `blur(${store.appConfig.backgroundBlur}px)`,
+                        }"
+                      />
+                      <!-- Mask Preview -->
+                      <div
+                        class="absolute inset-0 pointer-events-none transition-all duration-300"
+                        :style="{
+                          backgroundColor: `rgba(0,0,0,${store.appConfig.backgroundMask})`,
+                        }"
+                      ></div>
+                    </div>
+
+                    <!-- PC Controls -->
+                    <div
+                      class="bg-gray-50 p-2 rounded-lg border border-gray-100 flex items-center justify-center gap-4"
+                    >
+                      <div class="flex items-center gap-1">
+                        <span class="text-[10px] text-gray-500">模糊</span>
+                        <input
+                          type="range"
+                          v-model.number="store.appConfig.backgroundBlur"
+                          min="0"
+                          max="20"
+                          step="1"
+                          class="w-20 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                      </div>
+                      <div class="w-px h-3 bg-gray-300"></div>
+                      <div class="flex items-center gap-1">
+                        <span class="text-[10px] text-gray-500">遮罩</span>
+                        <input
+                          type="range"
+                          v-model.number="store.appConfig.backgroundMask"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          class="w-20 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Mobile Preview -->
+                  <div class="space-y-2">
+                    <div class="text-[10px] text-gray-500 text-center font-bold">手机端预览</div>
+                    <div
+                      class="relative h-48 w-full flex justify-center rounded-lg border border-gray-200 bg-gray-100 overflow-hidden"
+                    >
+                      <!-- Inner Container for aspect ratio -->
+                      <div class="relative h-full aspect-[9/16]">
+                        <img
+                          :src="customApiUrl"
+                          class="w-full h-full object-cover transition-all duration-700"
+                          :style="{
+                            filter: `blur(${store.appConfig.mobileBackgroundBlur}px)`,
+                          }"
+                        />
+                        <!-- Mask Preview -->
+                        <div
+                          class="absolute inset-0 pointer-events-none transition-all duration-300"
+                          :style="{
+                            backgroundColor: `rgba(0,0,0,${store.appConfig.mobileBackgroundMask})`,
+                          }"
+                        ></div>
+                      </div>
+                    </div>
+
+                    <!-- Mobile Controls -->
+                    <div
+                      class="bg-gray-50 p-2 rounded-lg border border-gray-100 flex items-center justify-center gap-4"
+                    >
+                      <div class="flex items-center gap-1">
+                        <span class="text-[10px] text-gray-500">模糊</span>
+                        <input
+                          type="range"
+                          v-model.number="store.appConfig.mobileBackgroundBlur"
+                          min="0"
+                          max="20"
+                          step="1"
+                          class="w-20 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                      </div>
+                      <div class="w-px h-3 bg-gray-300"></div>
+                      <div class="flex items-center gap-1">
+                        <span class="text-[10px] text-gray-500">遮罩</span>
+                        <input
+                          type="range"
+                          v-model.number="store.appConfig.mobileBackgroundMask"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          class="w-20 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-2"
+                    >图片 URL / API 地址</label
                   >
-                    <span>🖼️</span> 一键开启 Bing 每日壁纸
+                  <div class="flex gap-2">
+                    <input
+                      v-model="customApiUrl"
+                      class="flex-1 px-4 py-3 border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                      placeholder="https://example.com/image.jpg 或 随机图片API"
+                    />
+                    <button
+                      @click="customApiUrl = customApiUrl.split('?')[0] + '?t=' + Date.now()"
+                      class="px-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg border border-gray-200 transition-colors"
+                      title="刷新预览 (追加时间戳)"
+                    >
+                      🔄
+                    </button>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="api in presetApis"
+                    :key="api.name"
+                    @click="usePreset(api.url)"
+                    class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-lg transition-colors"
+                  >
+                    {{ api.name }}
                   </button>
-                  <p class="text-[10px] text-gray-400 mt-1 text-center">
-                    自动下载今日 Bing 壁纸到库并设为 PC 默认
-                  </p>
+                </div>
+
+                <div class="pt-4 flex items-center gap-3 border-t border-gray-100 mt-4">
+                  <button
+                    @click="applyCustomApi('pc')"
+                    class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow-sm transition-all active:scale-95"
+                    :disabled="!customApiUrl"
+                    :class="!customApiUrl ? 'opacity-50 cursor-not-allowed' : ''"
+                  >
+                    应用到 PC 壁纸
+                  </button>
+                  <button
+                    @click="applyCustomApi('mobile')"
+                    class="flex-1 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-bold rounded-lg shadow-sm transition-all active:scale-95"
+                    :disabled="!customApiUrl"
+                    :class="!customApiUrl ? 'opacity-50 cursor-not-allowed' : ''"
+                  >
+                    应用到 手机壁纸
+                  </button>
                 </div>
               </div>
-            </div>
-
-            <div class="border border-gray-200 rounded-xl bg-white p-4">
-              <h4 class="text-sm font-bold text-gray-800 mb-3">手机端接口</h4>
-              <div class="space-y-2">
-                <label class="block text-[12px] text-gray-600">列表接口</label>
-                <input
-                  v-model="store.appConfig.wallpaperApiMobileList"
-                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none"
-                  placeholder="默认 /api/mobile_backgrounds，返回文件名数组"
-                />
-                <label class="block text-[12px] text-gray-600 mt-2">上传接口</label>
-                <input
-                  v-model="store.appConfig.wallpaperApiMobileUpload"
-                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none"
-                  placeholder="默认 /api/mobile_backgrounds/upload (支持FormData: files)"
-                />
-                <label class="block text-[12px] text-gray-600 mt-2">删除接口基础路径</label>
-                <input
-                  v-model="store.appConfig.wallpaperApiMobileDeleteBase"
-                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none"
-                  placeholder="默认 /api/mobile_backgrounds，最终为 /base/{name}"
-                />
-                <label class="block text-[12px] text-gray-600 mt-2">图片访问前缀</label>
-                <input
-                  v-model="store.appConfig.wallpaperMobileImageBase"
-                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none"
-                  placeholder="默认 /mobile_backgrounds，最终为 /prefix/{name}"
-                />
-              </div>
-            </div>
-
-            <div class="flex items-center justify-end gap-3">
-              <button
-                @click="
-                  () => {
-                    store.saveData(true);
-                    fetchWallpapers();
-                  }
-                "
-                class="px-4 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm"
-              >
-                保存并测试列表
-              </button>
-              <button
-                @click="
-                  () => {
-                    store.appConfig.wallpaperApiPcList = '/api/backgrounds';
-                    store.appConfig.wallpaperApiPcUpload = '/api/backgrounds/upload';
-                    store.appConfig.wallpaperApiPcDeleteBase = '/api/backgrounds';
-                    store.appConfig.wallpaperPcImageBase = '/backgrounds';
-                    store.appConfig.wallpaperApiMobileList = '/api/mobile_backgrounds';
-                    store.appConfig.wallpaperApiMobileUpload = '/api/mobile_backgrounds/upload';
-                    store.appConfig.wallpaperApiMobileDeleteBase = '/api/mobile_backgrounds';
-                    store.appConfig.wallpaperMobileImageBase = '/mobile_backgrounds';
-                    store.saveData(true);
-                  }
-                "
-                class="px-4 py-2 rounded-lg text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200"
-              >
-                恢复默认
-              </button>
             </div>
           </div>
         </div>

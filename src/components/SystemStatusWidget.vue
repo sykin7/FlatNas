@@ -41,8 +41,12 @@ const isWide = computed(() => isMedium.value || isLarge.value);
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
+const errorCount = ref(0);
+const pollInterval = ref(5000);
+
 const fetchSystemStats = async () => {
   if (useMock.value) {
+    // ... mock logic (unchanged) ...
     systemStats.value = {
       cpu: {
         currentLoad: 15,
@@ -86,18 +90,43 @@ const fetchSystemStats = async () => {
   try {
     const headers = store.getHeaders();
     const res = await fetch("/api/system/stats", { headers });
+
+    // Stop polling if endpoint not found (404) or server error (500)
+    if (!res.ok) {
+      errorCount.value++;
+      if (errorCount.value >= 3) {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = null;
+        console.warn("System stats polling stopped due to repeated errors.");
+      }
+      return;
+    }
+
     const data = await res.json();
     if (data.success) {
       systemStats.value = data.data;
+      errorCount.value = 0; // Reset error count on success
+    } else {
+      errorCount.value++;
+      if (errorCount.value >= 3) {
+        // If server explicitly says failed multiple times, slow down or stop
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = null;
+      }
     }
   } catch (e) {
     console.error(e);
+    errorCount.value++;
+    if (errorCount.value >= 3) {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = null;
+    }
   }
 };
 
 onMounted(() => {
   fetchSystemStats();
-  pollTimer = setInterval(fetchSystemStats, 5000);
+  pollTimer = setInterval(fetchSystemStats, pollInterval.value);
 });
 
 onUnmounted(() => {

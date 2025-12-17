@@ -295,12 +295,20 @@ const openUrl = (url: string) => {
 <template>
   <div
     class="w-full h-full backdrop-blur-md border border-white/40 rounded-2xl flex flex-col overflow-hidden shadow-sm relative group transition-colors"
-    :style="{ backgroundColor: `rgba(255, 255, 255, ${widget.opacity ?? 0.9})` }"
+    :style="{
+      backgroundColor: `rgba(255, 255, 255, ${widget.opacity ?? 0.9})`,
+      color: widget.textColor,
+    }"
   >
     <div
       class="px-4 py-3 border-b border-gray-200/50 flex justify-between items-center bg-white/50 shrink-0"
     >
-      <div class="font-bold text-gray-800 text-sm flex items-center gap-2">📑 收藏夹</div>
+      <div
+        class="font-bold text-sm flex items-center gap-2"
+        :class="!widget.textColor ? 'text-gray-800' : ''"
+      >
+        📑 收藏夹
+      </div>
       <div class="flex-1 mx-4">
         <input
           v-model="searchQuery"
@@ -368,7 +376,8 @@ const openUrl = (url: string) => {
       <div v-for="cat in filteredData" :key="cat.id">
         <div class="flex items-center justify-between mb-3 group/cat border-b border-gray-100 pb-1">
           <span
-            class="font-bold text-gray-600 text-sm flex items-center gap-1 cursor-pointer select-none"
+            class="font-bold text-sm flex items-center gap-1 cursor-pointer select-none"
+            :class="!widget.textColor ? 'text-gray-600' : ''"
             @click="cat.collapsed = !cat.collapsed"
           >
             <span
@@ -413,9 +422,11 @@ const openUrl = (url: string) => {
             </div>
 
             <div class="flex flex-col min-w-0 flex-1">
-              <span class="font-medium text-gray-700 text-sm truncate group-hover:text-blue-600">{{
-                link.title
-              }}</span>
+              <span
+                class="font-medium text-sm truncate group-hover:text-blue-600"
+                :class="!widget.textColor ? 'text-gray-700' : ''"
+                >{{ link.title }}</span
+              >
               <span class="text-xs text-gray-400 truncate">{{ link.url }}</span>
             </div>
 

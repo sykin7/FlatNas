@@ -422,7 +422,7 @@ const copyWebhookUrl = () => {
   });
 };
 
-const formatTime = (ts: number) => {
+const formatTime = (ts?: number) => {
   if (!ts) return "-";
   return new Date(ts).toLocaleString();
 };
@@ -505,6 +505,23 @@ const restoreMissingWidgets = () => {
   } else {
     alert("未发现缺失的核心组件");
   }
+};
+
+const addCustomCssWidget = () => {
+  const newId = "custom-css-" + Date.now();
+  store.widgets.push({
+    id: newId,
+    type: "custom-css",
+    enable: true,
+    data: {
+      html: '<div class="my-custom-component">\n  <h3>自定义组件</h3>\n  <p>点击右上角编辑按钮修改内容</p>\n</div>',
+      css: ".my-custom-component {\n  padding: 10px;\n  background: linear-gradient(to right, #e0eafc, #cfdef3);\n  border-radius: 8px;\n  text-align: center;\n  height: 100%;\n  display: flex;\n  flex-direction: column;\n  justify-content: center;\n}\n.my-custom-component h3 {\n  margin: 0 0 5px 0;\n  color: #333;\n}",
+    },
+    colSpan: 1,
+    rowSpan: 1,
+    isPublic: true,
+  });
+  store.saveData();
 };
 
 const enableDockerWidget = () => {
@@ -1197,6 +1214,12 @@ const onMouseUp = () => {
                 >
                   恢复默认组件
                 </button>
+                <button
+                  @click="addCustomCssWidget"
+                  class="text-purple-500 hover:text-purple-700 underline mr-2"
+                >
+                  + 自定义组件
+                </button>
                 <div class="flex items-center gap-1">
                   <div class="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
                   <span class="text-gray-500">公开</span>
@@ -1315,7 +1338,7 @@ const onMouseUp = () => {
                     <div
                       class="flex flex-col items-center gap-2 flex-1 justify-center scale-100 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors w-full"
                       @click="editingOpacityId = w.id"
-                      title="点击调整透明度"
+                      title="点击调整样式"
                     >
                       <template v-if="editingOpacityId === w.id">
                         <div class="w-full px-2" @click.stop>
@@ -1336,9 +1359,37 @@ const onMouseUp = () => {
                             "
                             class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
                           />
+                          <div class="flex items-center justify-between mt-2 gap-2">
+                            <label class="text-[10px] text-gray-500">文字颜色</label>
+                            <div class="flex items-center gap-2">
+                              <input
+                                type="color"
+                                :value="w.textColor || '#374151'"
+                                @input="
+                                  (e) => {
+                                    w.textColor = (e.target as HTMLInputElement).value;
+                                    store.saveData();
+                                  }
+                                "
+                                class="w-5 h-5 p-0 border-0 rounded-full cursor-pointer overflow-hidden shadow-sm"
+                                title="选择颜色"
+                              />
+                              <button
+                                v-if="w.textColor"
+                                @click.stop="
+                                  w.textColor = undefined;
+                                  store.saveData();
+                                "
+                                class="text-[10px] text-red-400 hover:text-red-600"
+                                title="重置颜色"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
                           <button
                             @click.stop="editingOpacityId = null"
-                            class="mt-1 text-xs text-blue-500 hover:text-blue-700 w-full text-center"
+                            class="mt-2 text-xs text-blue-500 hover:text-blue-700 w-full text-center border-t border-gray-100 pt-1"
                           >
                             完成
                           </button>
@@ -1379,7 +1430,9 @@ const onMouseUp = () => {
                                                         ? "📡"
                                                         : w.type === "sidebar"
                                                           ? "⬅️"
-                                                          : "🖥️"
+                                                          : w.type === "custom-css"
+                                                            ? "🎨"
+                                                            : "🖥️"
                           }}
                         </div>
                         <span
@@ -1424,7 +1477,9 @@ const onMouseUp = () => {
                                                                 ? "倒计时"
                                                                 : w.type === "docker"
                                                                   ? "Docker 管理"
-                                                                  : `未知组件 (${w.type})`
+                                                                  : w.type === "custom-css"
+                                                                    ? "自定义组件"
+                                                                    : `未知组件 (${w.type})`
                           }}
                         </span>
                       </template>
@@ -1805,6 +1860,7 @@ const onMouseUp = () => {
                     点击<a
                       href="/flatnas-helper.zip"
                       download="flatnas-helper.zip"
+                      target="_blank"
                       class="text-blue-500 underline mx-1"
                       >下载浏览器插件</a
                     >解除限制

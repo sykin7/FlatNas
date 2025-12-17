@@ -57,8 +57,9 @@ watch(
 
 <template>
   <div
-    class="w-full h-full p-4 rounded-2xl backdrop-blur border border-white/10 text-gray-700 relative group"
-    :style="{ backgroundColor: `rgba(254, 249, 195, ${widget.opacity ?? 0.9})` }"
+    class="w-full h-full p-4 rounded-2xl backdrop-blur border border-white/10 relative group"
+    :class="!widget.textColor ? 'text-gray-700' : ''"
+    :style="{ backgroundColor: `rgba(254, 249, 195, ${widget.opacity ?? 0.9})`, color: widget.textColor }"
   >
     <textarea
       :readonly="!store.isLogged"
